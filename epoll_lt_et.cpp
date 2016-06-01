@@ -80,12 +80,33 @@ void et(epoll_event *events, int number, int epollfd, int listenfd)
 		}
 		else if (events[i].events & EPOLLIN)
 		{
-			// 因为这里使用的是et模式，所以这段代码只会运行一次，所以要循环把所有数据读出来
+			// 因为这里使用的是et模式，所以这段代码只会运行一次，所以要循环把socket能读的所有数据读出来
 			printf("event trigger once\n");
 			while(1)
 			{
 				memset(buf, '\0', BUFFER_SIZE);
-				int ret = recv
+				int ret = recv(sockfd, buf, BUFFER_SIZE-1, 0);
+				if (ret < 0)
+				{
+					// 对于非阻塞IO，下面的条件成立表示数据已全部读取完毕
+					if ((errno == EAGAIN) || (errno == EWOULDBLOCK))
+					{
+						printf("read later\n");
+						break;
+					}
+					close(sockfd);
+					break;
+				}
+				else if (ret == 0)
+					close(sockfd);
+				else
+					printf("get %d bytes of conten: %s\n", ret, buf);
+			}
+		}
+		else
+			printf("somthing else happened\n");
+	}
+}
 
 int main(int argc, char *argv[])
 {
